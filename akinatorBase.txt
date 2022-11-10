@@ -1,0 +1,46 @@
+{ "heavy" 
+  { "funny" 
+    { "Random object" 
+      { }
+      { }
+    }
+    { "not so funny" 
+      { "slow" 
+        { "suckSass" 
+          { }
+          { }
+        }
+        { "me" 
+          { }
+          { }
+        }
+      }
+      { "ASStronomy" 
+        { }
+        { }
+      }
+    }
+  }
+  { "day of the week" 
+    { "NarkoProklyat" 
+      { "rock" 
+        { "Kuvalda" 
+          { }
+          { }
+        }
+        { "metal" 
+          { }
+          { }
+        }
+      }
+      { "vadim" 
+        { }
+        { }
+      }
+    }
+    { "Monday" 
+      { }
+      { }
+    }
+  }
+}
