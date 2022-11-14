@@ -1,13 +1,18 @@
+#include "tree.h"
+#include "config.h"
 #define  TX_USE_SPEAK
 #include "TXLib.h"
-#include "tree.h"
 #include <cstdarg>
-
-const size_t  DUMP_SIZE   =   20  ;
-const size_t MAX_CMD_SIZE =   40  ;
-const char*     DENIAL    = "not ";
+#include <sys/types.h>
+#include <sys/stat.h>
 
 static FILE *LogFile  = fopen("logs/logFile.txt", "w");
+
+#define CUR_SYMB (*CUR_STR)
+
+#define NEXT_SYMB CUR_STR++
+
+#define CUR_STR (*buffer)
 
 int treeNodeCtor(TreeNode *elem, const Elem_t val) {
     catchNullptr(elem);
@@ -62,12 +67,23 @@ int treeExecuteNode(TreeNode *node) {
     
     catchNullptr(node -> data);
 
-    tell("Is characteristic ", NULL);
-    tell("%s related to ur object?\n", node -> data);
+    tell("Is it %s?", node -> data);
+    printf("\n");
 
     char *userAns = (char *) calloc(MAX_STRING_SIZE, sizeof(char));
     catchNullptr(userAns);
-    scanf("%s", userAns);
+
+    while (strcmpi(userAns, "yes") && strcmpi(userAns, "no")) {
+        printf("Please enter yes or no.\n", NULL);
+
+        scanf("%s", userAns);
+
+        if (strcmpi(userAns, "yes") && strcmpi(userAns, "no")) {
+            tell("Wrong command", NULL);
+            printf("!\n");
+            printf("Please enter yes or no.\n", NULL);
+        }
+    }
 
     if (!strcmpi(userAns, "yes")) {
         free(userAns);
@@ -92,8 +108,17 @@ int treeExecuteLeaf(TreeNode *node) {
     
     char *userAns = (char *) calloc(MAX_STRING_SIZE, sizeof(char));
     catchNullptr(userAns);
-    flash();
-    scanf("%s", userAns);
+
+    while (strcmpi(userAns, "yes") && strcmpi(userAns, "no")) {
+        flash();
+        scanf("%s", userAns);
+
+        if (strcmpi(userAns, "yes") && strcmpi(userAns, "no")) {
+            tell("Wrong command", NULL);
+            printf("!\n");
+            printf("Please enter yes or no.\n", NULL);
+        }
+    }
 
     if (!strcmpi(userAns, "yes")) {
         tell("That was too easy, bratanskii.", NULL);
@@ -129,12 +154,13 @@ int treeExecuteLeaf(TreeNode *node) {
 
         newChar = fgets(newChar, MAX_STRING_SIZE, stdin);
         catchNullptr(newChar);
-        *(strchr(newChar, '\n')) = '\0';
+        char *lastSymb = (strchr(newChar, '\n'));
+        if (lastSymb != nullptr)
+            *lastSymb =  '\0';
         node -> data = newChar;
 
         tell("Ok,", NULL);
-        tell(" I will try ", NULL);
-        tell("to remember ", NULL); 
+        tell(" I will try to remember ", NULL); 
         tell("ur useless information,", NULL);
         tell(" UwU", NULL);
         printf("\n");
@@ -178,6 +204,14 @@ int treePrintCompareRequest(Tree *head, const char *request1, const char *reques
 
     int res1 = treeGetDefinition(head -> tree, &def1, request1, err);
     int res2 = treeGetDefinition(head -> tree, &def2, request2, err);
+
+    if (!res1) {
+        tell("%s was not found!", request1);
+        printf("\n");
+    }
+    if (!res2) {
+        tell("%s was not found!", request2);
+    }
     if (!res1 || !res2) return NotFound;
 
     *err |= treePrintComp(&def1, &def2, request1, request2);
@@ -191,7 +225,7 @@ int treeGetDefinition(TreeNode *tree, Stack *def, const char *request, int *err)
 
     if (strcmpi(request, tree -> data)) {
         char *newCharacteristic = (char *) calloc(MAX_STRING_SIZE, sizeof(char));
-              newCharacteristic = (char *) memcpy(newCharacteristic, DENIAL, MAX_STRING_SIZE);
+              newCharacteristic = (char *) strcpy(newCharacteristic, DENIAL);
 
         *err = stackPush(def, strcat(newCharacteristic, tree -> data));
         if (treeGetDefinition(tree -> lft, def, request, err)) return Found;
@@ -222,7 +256,7 @@ int treePrintComp(Stack *def1, Stack *def2, const char *request1, const char *re
     size_t commonChar = 0;
     tell("Common characteristic are: ", NULL);
     for (commonChar = 0; commonChar < def1 -> size && commonChar < def2 -> size; commonChar++ ) {
-        if (def1 -> data[commonChar] != def2 -> data[commonChar]) break;
+        if (strcmpi(def1 -> data[commonChar], def2 -> data[commonChar])) break;
         
         tell("%s, ", def1 -> data[commonChar]);
     }
@@ -237,16 +271,23 @@ int treePrintComp(Stack *def1, Stack *def2, const char *request1, const char *re
         for (size_t cur2 = commonChar; cur2 < def2 -> size; cur2++)
             tell("%s, ", def2 -> data[cur2]);
         printf("\n");
-    } else if (commonChar < def1 -> size) {
+
+        return TreeIsOk;
+    } 
+    if (commonChar < def1 -> size) {
         tell("\nBut %s: ", request1);
         for (size_t cur1 = commonChar; cur1 < def1 -> size; cur1++)
             tell("%s, ", def1 -> data[cur1]);
         printf("\n");
-    } else {
+
+    } 
+    if (commonChar < def2 -> size) { //if
         tell("\nBut %s: ", request2);
         for (size_t cur2 = commonChar; cur2 < def2 -> size; cur2++)
             tell("%s, ", def2 -> data[cur2]);
         printf("\n");
+
+        return TreeIsOk;
     }
 
     return TreeIsOk;
@@ -274,51 +315,114 @@ int stackDefPrint(Stack *def, const char *request) {
 //     myfPrintf(LogFile, "\n}\n");
 // }
 
+static assignBuffer(char **buffer, const char *fileName);
+
+static size_t getFileSize(const char *fileName);
+
 int treeLoadBase(Tree *head, const char *fileName) {
     catchNullptr(  head  );
     catchNullptr(fileName);
 
-    FILE *stream = fopen(fileName, "r");
-    catchNullptr(stream);
-
-    int err = treeBaseScanf(&(head -> tree), stream);
+    char *buffer = nullptr;
+    int err = assignBuffer(&buffer, fileName);
     if (err) return err;
 
-    fclose(stream);
+    err = treeBaseScanf(&(head -> tree), &buffer);
+    if (err) return err;
+
+    // fprintf(stderr, "Suka!\n");
 
     return TreeIsOk;
 }
 
-static int myGetChar(FILE *stream) {
-    int c = fgetc(stream);
-    while (c == '\n' || c == ' ') c = fgetc(stream);
+static int assignBuffer(char **buffer, const char *fileName) {
+    catchNullptr(fileName);
 
-    return c;
+    size_t fileSize = getFileSize(fileName);
+
+    FILE *stream = fopen(fileName, "r");
+    catchNullptr(stream);
+
+    *buffer = (char *) calloc(fileSize + 1, sizeof(char));
+    size_t gotSymbols = fread(*buffer, sizeof(char), fileSize, stream);
+    CUR_STR[gotSymbols] = '\0';
+
+    if (!feof(stream)) return EXIT_FAILURE;
+
+    fclose(stream);
+
+    return EXIT_SUCCESS;
 }
 
-int treeBaseScanf(TreeNode **node, FILE *stream) {
-    catchNullptr(stream);
+static size_t getFileSize(const char *fileName) {
+    catchNullptr(fileName);
+
+    struct stat buf = {};
+    if (stat(fileName, &buf)) {
+        fprintf(stderr, "An Error in reading file occured\n");
+        return 0;
+    }
+
+    return buf.st_size;
+}
+
+static char *flashBuf(char *buffer);
+
+static char *skipWord (char *buffer);
+
+int treeBaseScanf(TreeNode **node, char **buffer) {
+    catchNullptr(buffer);
     catchNullptr( node );
 
     int err = EXIT_SUCCESS;
     
-    if (myGetChar(stream) != '{') return EXIT_FAILURE;
-    if (myGetChar(stream) == '}') return EXIT_SUCCESS;
+    CUR_STR = flashBuf(CUR_STR);
 
+    // fprintf(stderr, "!%c!\n", *buffer);
 
-    char *curCmd = (char *) calloc(MAX_STRING_SIZE, sizeof(char));
-          curCmd =    fgets(curCmd, MAX_STRING_SIZE, stream)     ;
+    if (CUR_SYMB != '{') return EXIT_FAILURE;
 
-    if (curCmd == nullptr) return EXIT_FAILURE;
-    *(strchr(curCmd, '\"')) = '\0';
+    NEXT_SYMB;
+    CUR_STR = flashBuf(CUR_STR);
 
-    *node = (TreeNode *) calloc(1, sizeof(TreeNode));
-    err |= treeNodeCtor(*node, curCmd);
+    if (CUR_SYMB == '}') {
+        NEXT_SYMB;
+        return EXIT_SUCCESS;
+    }
 
-    err |= treeBaseScanf(&((*node) -> lft), stream);
-    err |= treeBaseScanf(&((*node) -> rgt), stream);
+    NEXT_SYMB;
 
-    if (myGetChar(stream) != '}') return EXIT_FAILURE;
+    // CUR_STR  = (strchr(CUR_STR, '\"') + 1);
+    // catchNullptr(CUR_STR);
+
+    char  *curCmd  =       CUR_STR          ;
+    catchNullptr(curCmd);
+    char *lastSymb = (strchr(curCmd, '\"'));
+
+    if (lastSymb != nullptr)
+        *lastSymb =  '\0';
+
+    NEXT_SYMB;
+    CUR_STR = skipWord(CUR_STR);
+    catchNullptr(CUR_STR);
+
+    err |= treeNew(node, curCmd);
+
+    // fprintf(stderr, "!%c!\n", CUR_SYMB);
+
+    // fprintf(stderr, "Blyat in -> %s\n", curCmd);
+    // fprintf(stderr, "   Blyat in -> %s\n", *buffer);
+    err |= treeBaseScanf(&((*node) -> lft), buffer);
+    // fprintf(stderr, "Blyat -> %s\n", curCmd);
+    // fprintf(stderr, "   Blyat -> %s\n", *buffer);
+    err |= treeBaseScanf(&((*node) -> rgt), buffer);
+    // fprintf(stderr, "Blyat -> %s\n", curCmd);
+
+    CUR_STR = flashBuf(CUR_STR);
+    if (CUR_SYMB != '}') return EXIT_FAILURE;
+    NEXT_SYMB;
+    
+    // fprintf(stderr, "Blyat out -> %s\n", curCmd);
 
     return err;
 }
@@ -342,30 +446,30 @@ int treeBasePrint(TreeNode *node, char *nullString, FILE *stream) {
     char *curString =  nullString ;
 
     fprintf(stream, "%s{ \"%s\" \n", nullString, node -> data);
-    strcat(nullString, "  ");
+    strcat(nullString, "    ");
 
     if (node -> lft != nullptr)
         err |= treeBasePrint(node -> lft, nullString, stream);
     else 
-        fprintf(stream, "%s{ }\n", nullString);
+        fprintf(stream, "%s{    }\n", nullString);
     
     if (node -> rgt != nullptr)
         err |= treeBasePrint(node -> rgt, nullString, stream);
     else 
-        fprintf(stream, "%s{ }\n", nullString);
+        fprintf(stream, "%s{    }\n", nullString);
 
-    nullString[strlen(nullString) - 2] = '\0';
+    nullString[strlen(nullString) - 4] = '\0';
     fprintf(stream, "%s}\n", nullString);
 
     return err;
 }
 
-int treeGraphVizDump(Tree *tree, const char *fileName, int cmd) {
-    catchNullptr(fileName);
-    catchNullptr(  tree  );
+const char *treeGraphVizDump(Tree *tree, const char *fileName, int cmd) {
+    if (fileName == nullptr) return nullptr;
+    if (  tree   == nullptr) return nullptr;
 
     FILE *stream = fopen(fileName, "w");
-    catchNullptr(stream);
+    if (stream == nullptr) return nullptr;
 
     fprintf(stream, "digraph Tree {\n"
                     "   rankdir = TB;\n");
@@ -387,21 +491,22 @@ int treeGraphVizDump(Tree *tree, const char *fileName, int cmd) {
 
     fclose(stream);
 
-    char CmdBuffer[MAX_CMD_SIZE] = {0};
-    sprintf(CmdBuffer, "dot -Tpng %s -o logs/logPic%zu.png", fileName, cmd);
+    static char picName[MAX_CMD_SIZE] = "";
+    sprintf(picName, "logs/logPic%zu.png", cmd);
 
-    if (system(CmdBuffer)) return TreeGraphVizExecutionErr;
+    char CmdBuffer[MAX_CMD_SIZE] = {0};
+    sprintf(CmdBuffer, "dot -Tpng %s -o %s", fileName, picName);
+
+    if (system(CmdBuffer)) return nullptr;
 
     FILE *LogGraph = fopen("logs/HtmlLog.html", "w");
-
-    fseek(LogGraph, 0, SEEK_END);
     
     fprintf(LogGraph, "<center>\n<h1>\nPicture[%zu]\n</h1>\n</center>\n", cmd);
     fprintf(LogGraph, "<img src= logPic%zu.png />\n", cmd);
 
     fclose(LogGraph);
 
-    return TreeIsOk;
+    return picName;
 }
 
 void treePrintNode(TreeNode *tree, size_t *cur, FILE *stream) {
@@ -414,12 +519,12 @@ void treePrintNode(TreeNode *tree, size_t *cur, FILE *stream) {
     
     if (tree -> lft != nullptr) {
         (*cur)++;
-        fprintf(stream, "       node%zu -> node%zu[color = \"darkblue\"];\n", nodeNum, *cur);
+        fprintf(stream, "       node%zu -> node%zu[xlabel = \"No\", color = \"darkblue\"];\n", nodeNum, *cur);
         treePrintNode(tree -> lft, cur, stream);
     }
     if (tree -> rgt != nullptr) {
         (*cur)++;
-        fprintf(stream, "       node%zu -> node%zu[color = \"darkgreen\"];\n", nodeNum, *cur);
+        fprintf(stream, "       node%zu -> node%zu[xlabel = \"Yes\", color = \"darkgreen\"];\n", nodeNum, *cur);
         treePrintNode(tree -> rgt, cur, stream);
     }
 }
@@ -513,4 +618,28 @@ void tell(const char * format, ...) {
                                                                 " xml:lang='EN'>", buffer, "</speak>");
     txSpeak (voiceCmd);                                                 
     printf("%s", buffer);                                                           
+}
+
+int treeNew(TreeNode **node, char *curCmd) {
+    catchNullptr( node );
+    catchNullptr(curCmd);
+
+    *node = (TreeNode *) calloc(1, sizeof(TreeNode));
+    catchNullptr(*node);
+
+    int err = treeNodeCtor(*node, curCmd);
+
+    return err;
+}
+
+static char *flashBuf(char *buffer) {
+    while (*buffer == '\n' || *buffer == ' ') ++buffer;
+
+    return buffer;
+}
+
+static char *skipWord (char *buffer) {
+    while (*buffer != '}' && *buffer != '{') buffer++;
+
+    return buffer;
 }

@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-const int MAX_TREE_SIZE = 20;                                                                                        
 
 enum TreeErrors {
              TreeIsOk         =       0,
@@ -100,13 +99,15 @@ int stackDefPrint(Stack *def, const char *request);
 
 int treeLoadBase(Tree *head, const char *fileName);
 
-int treeBaseScanf(TreeNode **node, FILE *stream = stdin);
+int treeBaseScanf(TreeNode **node, char **buffer);
+
+int treeNew(TreeNode **node, char *curCmd);
 
 int treeMakeBase(Tree *head, FILE *stream = stdout);
 
 int treeBasePrint(TreeNode *node, char *nullString, FILE *stream = stdout);
 
-int treeGraphVizDump(Tree *tree, const char *fileName, int cmd);
+const char *treeGraphVizDump(Tree *tree, const char *fileName, int cmd);
 
 void treePrintNode(TreeNode *tree, size_t *cur, FILE *stream = stdout);
 

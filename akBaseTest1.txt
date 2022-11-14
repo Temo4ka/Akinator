@@ -1,0 +1,64 @@
+{ "heavy" 
+    { "Random object" 
+        {    }
+        {    }
+    }
+    { "day of the week" 
+        { "NarkoProklyat" 
+            { "rock" 
+                { "it kills" 
+                    { "game" 
+                        { "Kuvalda" 
+                            {    }
+                            {    }
+                        }
+                        { "ping pong" 
+                            {    }
+                            {    }
+                        }
+                    }
+                    { "hated by Tyoma" 
+                        { "Zadacha po martarnoo" 
+                            {    }
+                            {    }
+                        }
+                        { "running" 
+                            {    }
+                            {    }
+                        }
+                    }
+                }
+                { "metal" 
+                    {    }
+                    {    }
+                }
+            }
+            { "knight" 
+                { "vadim" 
+                    {    }
+                    {    }
+                }
+                { "Arseniy" 
+                    {    }
+                    {    }
+                }
+            }
+        }
+        { "Shabbat" 
+            { "God said to relax" 
+                { "Monday" 
+                    {    }
+                    {    }
+                }
+                { "Sunday" 
+                    {    }
+                    {    }
+                }
+            }
+            { "Subbota" 
+                {    }
+                {    }
+            }
+        }
+    }
+}
